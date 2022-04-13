@@ -219,7 +219,6 @@ def get_fmriprep_timeseries(fmriprep_folder,
 
 
     """
-
     if confounds_to_include is None:
         confounds_to_include = ['FramewiseDisplacement', 'aCompCor00',
                                 'aCompCor01', 'aCompCor02', 'aCompCor03',
@@ -233,19 +232,25 @@ def get_fmriprep_timeseries(fmriprep_folder,
                                                          sourcedata_folder):
 
         print("Extracting signal from {}...".format(func.filename))
-        confounds = pd.read_table(confounds.filename).fillna(method='bfill')
+        confounds = pd.read_table(confounds.path).fillna(method='bfill')
 
+        if hasattr(meta, 'RepititionTime'):
+            t_r = meta['RepititionTime']
+        else:
+            t_r = 2
         tc = extract_timecourse_from_nii(atlas,
-                                         func.filename,
-                                         t_r=meta['RepetitionTime'],
+                                         func.path,
+                                         t_r=t_r,
                                          atlas_type=atlas_type,
                                          low_pass=low_pass,
                                          high_pass=high_pass,
                                          confounds=confounds[confounds_to_include].values)
 
         for key in ['subject', 'task', 'run', 'session']:
-            if hasattr(func, key):
-                tc[key] = getattr(func, key)
+            if key in func.get_entities():
+            #if hasattr(func, key):
+                tc[key] = func.entities[key]
+                #tc[key] = getattr(func, key)
 
                 if key not in index_keys:
                     index_keys.append(key)
@@ -258,6 +263,13 @@ def get_fmriprep_timeseries(fmriprep_folder,
 
     return timecourses
 
+
+def get_func_and_confounds(fmriprep_folder,
+                           sourcedata_folder):
+    fc = _get_func_and_confounds(fmriprep_folder,
+                                 sourcedata_folder)
+
+    return fc
 
 def _make_psc(data):
     mean_img = image.mean_img(data)
@@ -277,8 +289,9 @@ def _get_func_and_confounds(fmriprep_folder,
     fmriprep_layout = BIDSLayout(fmriprep_folder)
     sourcedata_layout = BIDSLayout(sourcedata_folder)
 
-    files = fmriprep_layout.get(extensions=['.nii', 'nii.gz'],
-                                modality='func', suffix='preproc')
+    files = fmriprep_layout.get(extension=['.nii', 'nii.gz'],
+                                datatype='func', desc='preproc',
+                                space='MNI152NLin2009cAsym')
 
     confounds = []
     metadata = []
@@ -287,15 +300,15 @@ def _get_func_and_confounds(fmriprep_folder,
         kwargs = {}
 
         for key in ['subject', 'run', 'task', 'session']:
-            if hasattr(f, key):
-                kwargs[key] = getattr(f, key)
+            if key in f.get_entities():
+                kwargs[key] = f.entities[key]
 
-        c = fmriprep_layout.get(suffix='confounds', **kwargs)
+        c = fmriprep_layout.get(extension='.tsv', desc='confounds', **kwargs)
         c = c[0]
         confounds.append(c)
 
         sourcedata_file = sourcedata_layout.get(
-            modality='func', extensions='nii.gz', **kwargs)
+            datatype='func', extension='nii.gz', **kwargs)
 
         assert (len(sourcedata_file) == 1)
         md = sourcedata_layout.get_metadata(sourcedata_file[0].filename)
