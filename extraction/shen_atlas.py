@@ -83,7 +83,7 @@ def fetch_atlas_shen(n_rois=268, resolution_mm=1, data_dir=None, verbose=1):
              img_file_template.format(resolution_mm, n_rois)]
     
     if data_dir is None:
-        data_dir = 'C:\\Users\\wr178\\PycharmProjects\\ShenExtraction\\shen_data'
+        data_dir = '/home/wr178/src/ShenExtraction/shen_data'
         
     dataset_name = 'shen_2011'
     #data_dir = _get_dataset_dir(dataset_name, data_dir=data_dir, verbose=verbose)

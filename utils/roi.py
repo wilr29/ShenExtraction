@@ -286,8 +286,30 @@ def _make_psc(data):
 def _get_func_and_confounds(fmriprep_folder,
                             sourcedata_folder):
     from bids import BIDSLayout
-    fmriprep_layout = BIDSLayout(fmriprep_folder)
-    sourcedata_layout = BIDSLayout(sourcedata_folder)
+    import os
+    
+    print("Get BIDSLayout for fmriprep data")
+    print("  Check for an existing database file")
+    if os.path.exists(os.path.join(fmriprep_folder,'bids_layout.db')):
+        print("    DB Exists! Loading...")
+        fmriprep_layout = BIDSLayout.load(os.path.join(fmriprep_folder,'bids_layout.db'))
+    else:
+        print("    No DB File, generating new one")
+        fmriprep_layout = BIDSLayout(fmriprep_folder)
+        print("    Saving layout DB file. ")
+        fmriprep_layout.save(os.path.join(fmriprep_folder,'bids_layout.db'))
+    
+    
+    print("Get BIDSLayout for source data")
+    print("  Check for an existing database file")
+    if os.path.exists(os.path.join(sourcedata_folder,'bids_layout.db')):
+        print("    DB Exists! Loading...")
+        sourcedata_layout = BIDSLayout.load(os.path.join(sourcedata_folder,'bids_layout.db'))
+    else:
+        print("    No DB File, generating new one")
+        sourcedata_layout = BIDSLayout(sourcedata_folder)
+        print("    Saving layout DB file. ")
+        sourcedata_layout.save(os.path.join(sourcedata_folder,'bids_layout.db'))
 
     files = fmriprep_layout.get(extension=['.nii', 'nii.gz'],
                                 datatype='func', desc='preproc',
@@ -296,7 +318,10 @@ def _get_func_and_confounds(fmriprep_folder,
     confounds = []
     metadata = []
 
+    count = 1
     for f in files:
+        b = "get confounds and metadata: %d/%d " % (count, len(files))
+        print(b, end="\r")
         kwargs = {}
 
         for key in ['subject', 'run', 'task', 'session']:
@@ -313,5 +338,10 @@ def _get_func_and_confounds(fmriprep_folder,
         assert (len(sourcedata_file) == 1)
         md = sourcedata_layout.get_metadata(sourcedata_file[0].filename)
         metadata.append(md)
+        
+        if count == len(files):
+            print("DONE!")
+        else:
+            count = count + 1
 
     return list(zip(files, confounds, metadata))
